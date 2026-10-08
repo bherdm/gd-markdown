@@ -12,24 +12,6 @@ gdMarkdown renders your project's Markdown files inside the Godot editor. This g
 - [Checklists](#checklists)
 - [Limitations](#limitations)
 
-Every example has a {icon:ActionCopy} button to copy it.
-
-## Using the panel
-
-| Control | What it does |
-|---|---|
-| {icon:Back} {icon:Forward} | Go back or forward through the pages and headings you've visited, like a web browser. Your mouse's side buttons do the same. |
-| File dropdown | Lists every `.md` file in the project, including ones inside addons. This guide is at the bottom. |
-| {icon:ImageTexture} | Opens the icon browser (see [Editor icons](#editor-icons)). |
-| {icon:Help} | Opens this guide. |
-| {icon:Reload} | Re-reads the file from disk. |
-
-The page updates on its own when files change, and follows a file you rename or move in the FileSystem dock.
-
-To edit a Markdown file, double-click it in the FileSystem dock to open it in the script editor.
-
-To move the panel, drag its tab to any dock, or to the bottom panel.
-
 ## Editor icons
 
 `{icon:Name}` shows an icon from the Godot editor inline, at text size.
