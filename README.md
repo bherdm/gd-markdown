@@ -34,3 +34,5 @@ Developed with assistance from Claude Opus (Anthropic).
 gdMarkdown is released under the [MIT License](LICENSE), copyright (c) 2026 bherdm.
 
 Portions adapted from Markdown Previewer by JSH remain under their original MIT License.
+
+gdMarkdown is not affiliated with or endorsed by the Godot Foundation. gdMarkdown uses the GODOT® name and logos under a permissive license granted by the Godot Foundation.
