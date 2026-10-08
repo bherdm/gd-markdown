@@ -1,0 +1,9 @@
+# Godot 4 cache and generated files
+.godot/
+/android/
+
+# Personal editor settings
+.vscode/
+
+# OS generated files
+.DS_Store
