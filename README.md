@@ -1,8 +1,8 @@
 # gdMarkdown
 
-A Markdown docs dock for the Godot 4.7 editor. Read your project's `.md` files as formatted pages, right next to the viewports.
+A Markdown doc rendering dock for the Godot 4.7 editor. Read your project's `.md` files as formatted pages alongside the viewport.
 
-Standard markdown support, plus a few Godot-specific features:
+Standard Markdown support, plus a few Godot-specific features:
 
 - **Editor icons in text.** `{icon:ScriptCreate}` draws Godot Engine icons inline, plus a built-in browser to find names.
 - **Links into Godot's docs.** `[position](godot:Node2D.position)` opens the offline class reference.
