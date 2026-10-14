@@ -43,6 +43,13 @@ var _history_index := -1
 var back_button: Button
 var forward_button: Button
 
+# With the sync button on, switching to a Markdown tab in the script editor
+# opens that file here, and opening a file here switches to its tab if it's
+# already open there (no new tabs, and the main screen stays as it is).
+var sync_button: Button
+var _script_tabs: TabContainer  # the script editor's tabs, one per open file
+var _script_tab_check_queued := false
+
 # Toolbar buttons and their editor icon names, so icons can be swapped when
 # the editor theme changes (light themes use different icon colors).
 var _toolbar_icons := {}
@@ -88,6 +95,9 @@ func _enter_tree() -> void:
 	EditorInterface.get_file_system_dock().files_moved.connect(_on_files_moved)
 	EditorInterface.get_file_system_dock().folder_moved.connect(_on_folder_moved)
 	resource_saved.connect(_on_resource_saved)
+	_script_tabs = _find_script_tabs()
+	if _script_tabs:
+		_script_tabs.tab_changed.connect(_queue_script_tab_check)
 
 	_refresh_file_list()
 	var last: String = EditorInterface.get_editor_settings().get_project_metadata(
@@ -101,6 +111,8 @@ func _exit_tree() -> void:
 	EditorInterface.get_file_system_dock().files_moved.disconnect(_on_files_moved)
 	EditorInterface.get_file_system_dock().folder_moved.disconnect(_on_folder_moved)
 	resource_saved.disconnect(_on_resource_saved)
+	if is_instance_valid(_script_tabs):
+		_script_tabs.tab_changed.disconnect(_queue_script_tab_check)
 	_watch_editor(null)
 	remove_dock(dock)
 	dock.queue_free()
@@ -163,6 +175,15 @@ func _build_ui() -> Control:
 	reload.tooltip_text = "Reload the file from disk"
 	reload.pressed.connect(_reload)
 	toolbar.add_child(reload)
+
+	sync_button = Button.new()
+	sync_button.flat = true
+	sync_button.toggle_mode = true
+	sync_button.button_pressed = EditorInterface.get_editor_settings().get_project_metadata(
+		METADATA_SECTION, "sync_editor", true)
+	_show_sync_state()
+	sync_button.toggled.connect(_on_sync_toggled)
+	toolbar.add_child(sync_button)
 
 	scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -333,6 +354,7 @@ func _navigate(path: String, anchor := "") -> void:
 		_update_history_buttons()
 	else:
 		_open(path, false, anchor)
+		_show_in_script_editor(path)
 
 
 ## Moves through history: -1 for Back, 1 for Forward. Entries for files that
@@ -355,6 +377,7 @@ func _go(step: int) -> void:
 		_update_history_buttons()
 	else:
 		_open(entry.path, false, "", entry.scroll)
+		_show_in_script_editor(entry.path)
 
 
 func _save_scroll() -> void:
@@ -834,25 +857,11 @@ func _toggle_task(line: int) -> void:
 
 ## The script editor's text box for [param path], or null if it isn't open.
 func _editor_for(path: String) -> CodeEdit:
-	var script_editor := EditorInterface.get_script_editor()
-	var editors := script_editor.get_open_script_editors()
-	if editors.is_empty():
+	var entry := _script_list_entry(func(entry_path, _tab): return entry_path == path)
+	if entry.is_empty():
 		return null
-	var tabs := editors[0].get_parent() as TabContainer
-	if tabs == null:
-		return null
-	# The script editor's file list shows each file's path as a tooltip and
-	# stores its tab number as metadata. This isn't a public API, so if a
-	# future Godot changes it, the lookup simply finds nothing.
-	for list in script_editor.find_children("*", "ItemList", true, false):
-		var items := list as ItemList
-		for i in items.item_count:
-			var tab: Variant = items.get_item_metadata(i)
-			if items.get_item_tooltip(i) == path and tab is int and tab < tabs.get_tab_count():
-				var editor := tabs.get_tab_control(tab) as ScriptEditorBase
-				if editor:
-					return editor.get_base_editor() as CodeEdit
-	return null
+	var editor := _script_tabs.get_tab_control(entry.tab) as ScriptEditorBase
+	return editor.get_base_editor() as CodeEdit if editor else null
 
 
 func _has_unsaved_changes(path: String) -> bool:
@@ -885,6 +894,83 @@ func _sync_with_editor() -> void:
 
 func _toast(message: String, severity := EditorToaster.SEVERITY_WARNING) -> void:
 	EditorInterface.get_editor_toaster().push_toast("gdMarkdown: " + message, severity)
+
+#endregion
+
+
+#region Script editor sync
+
+# The script editor's file list shows each file's path as a tooltip and
+# stores its tab number as metadata. This isn't a public API, so if a future
+# Godot changes it, lookups simply find nothing and syncing quietly stops.
+
+func _find_script_tabs() -> TabContainer:
+	var found := EditorInterface.get_script_editor().find_children("*", "TabContainer", true, false)
+	return found[0] as TabContainer if not found.is_empty() else null
+
+
+## The first file list entry that [param matches] (called with the entry's
+## path and tab number): {list, index, path, tab}, or {} if there's none.
+func _script_list_entry(matches: Callable) -> Dictionary:
+	if not is_instance_valid(_script_tabs):
+		return {}
+	for list in EditorInterface.get_script_editor().find_children("*", "ItemList", true, false):
+		var items := list as ItemList
+		for i in items.item_count:
+			var path := items.get_item_tooltip(i)
+			var tab: Variant = items.get_item_metadata(i)
+			if path.begins_with("res://") and tab is int and tab < _script_tabs.get_tab_count() \
+					and matches.call(path, tab):
+				return {"list": items, "index": i, "path": path, "tab": tab}
+	return {}
+
+
+func _on_sync_toggled(on: bool) -> void:
+	EditorInterface.get_editor_settings().set_project_metadata(METADATA_SECTION, "sync_editor", on)
+	_show_sync_state()
+	if on:
+		_follow_script_editor()
+
+
+## A pressed flat button looks much like an unpressed one, so the icon and
+## tooltip say which state it's in: a chain when linked, a broken one when not.
+func _show_sync_state() -> void:
+	var on := sync_button.button_pressed
+	_set_toolbar_icon(sync_button, "Instance" if on else "Unlinked")
+	sync_button.tooltip_text = "Following the script editor (click to stop)" if on \
+			else "Not following the script editor (click to follow)"
+
+
+## Opening a file passes through several tabs in one frame, so look once the
+## switching has settled.
+func _queue_script_tab_check(_tab := 0) -> void:
+	if not _script_tab_check_queued:
+		_script_tab_check_queued = true
+		_follow_script_editor.call_deferred()
+
+
+## Opens the script editor's current tab here, if it's a Markdown file.
+func _follow_script_editor() -> void:
+	_script_tab_check_queued = false
+	if not sync_button.button_pressed or not is_instance_valid(_script_tabs):
+		return
+	var current := _script_tabs.current_tab
+	var entry := _script_list_entry(func(_path, tab): return tab == current)
+	if not entry.is_empty() and entry.path.get_extension().to_lower() == "md":
+		_navigate(entry.path)
+
+
+## Switches the script editor to [param path]'s tab if the file is already
+## open there. Selecting it in the file list does what a click there does.
+func _show_in_script_editor(path: String) -> void:
+	if not sync_button.button_pressed:
+		return
+	var entry := _script_list_entry(func(entry_path, _tab): return entry_path == path)
+	if entry.is_empty() or entry.tab == _script_tabs.current_tab:
+		return
+	var list: ItemList = entry.list
+	list.select(entry.index)
+	list.item_selected.emit(entry.index)
 
 #endregion
 

@@ -10,6 +10,7 @@ gdMarkdown renders your project's Markdown files inside the Godot editor. This g
 - [Image sizes](#image-sizes)
 - [Code blocks](#code-blocks)
 - [Checklists](#checklists)
+- [Writing in the script editor](#writing-in-the-script-editor)
 - [Limitations](#limitations)
 
 ## Editor icons
@@ -140,6 +141,12 @@ Click a checkbox in a task list to check or uncheck it. The Markdown file is upd
 Try the boxes above. In this guide they only change on screen.
 
 If the file is open in the script editor with unsaved changes, the panel shows your unsaved text, with a note at the top, and a click changes the text in the script editor instead of the file. Save as usual, or undo the click there with <kbd>Command</kbd>+<kbd>Z</kbd>.
+
+## Writing in the script editor
+
+Double-click a Markdown file in the FileSystem dock to edit it in the script editor. The panel follows along: switch to a `.md` tab there and the panel shows that file, updating shortly after you stop typing. Going the other way, opening a file in the panel brings its script editor tab forward, if it's already open.
+
+To turn this off, press {icon:Instance} in the toolbar. It changes to {icon:Unlinked} while the panel isn't following.
 
 ## Limitations
 

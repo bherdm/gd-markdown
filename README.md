@@ -7,6 +7,7 @@ Standard Markdown support, plus a few Godot-specific features:
 - **Editor icons in text.** `{icon:ScriptCreate}` draws Godot Engine icons inline, plus a built-in browser to find names.
 - **Links into Godot's docs.** `[position](godot:Node2D.position)` opens the offline class reference.
 - **Links between files.** `.md` links open in the dock, `.gd` links open the script editor, and `.tscn` links open the scene.
+- **Follows the script editor.** Switch to a `.md` tab and the dock shows it; open a file in the dock and its script editor tab comes forward. Toggle it with the chain-link button.
 - **Code blocks with copy buttons** that keep tab indentation intact for pasting GDScript.
 - **Tables, task lists, images size options, quotes, and editor theme following**
 
